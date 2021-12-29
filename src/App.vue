@@ -18,6 +18,7 @@
                 type="text"
                 v-model="ticker"
                 @keydown.enter="add"
+                @change="checkForAvailability"
                 name="wallet"
                 id="wallet"
                 class="block w-full pr-10 border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
@@ -48,7 +49,7 @@
                 CHD
               </span>
             </div>
-            <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
+            <div v-if="messageValidation" class="text-sm text-red-600">Такой тикер уже добавлен</div>
           </div>
         </div>
         <button
@@ -72,27 +73,42 @@
           Добавить
         </button>
       </section>
-
+      <template v-if="tickers.length === 0">
+        <hr class="w-full border-t border-gray-600 my-4" />
+          <div class="text-center text-sm font-medium text-gray-500 truncate">
+            Здесь пусто! <br> Добавьте тикер.
+          </div>
+        <hr class="w-full border-t border-gray-600 my-4" />
+      </template>
       <template v-if="tickers.length">
         <hr class="w-full border-t border-gray-600 my-4" />
         <div class="flex justify-between">
           <div>
-          <button 
-            class="h-9 my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 mr-2 mt-1 mb-1"
-            v-if="page > 1"
-            @click="page = page - 1"
-          >
-            Назад
-          </button>
-          <button 
-            class="h-9 my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 mt-1 mb-1"
-            @click="page = page + 1"
-            v-if="hasNextPage"
-          >
-            Вперед
-          </button>
+            <button 
+              class="h-9 my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 mr-2 mt-1 mb-1"
+              v-if="page > 1"
+              @click="page = page - 1"
+            >
+              Назад
+            </button>
+            <button 
+              class="h-9 my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 mt-1 mb-1"
+              @click="page = page + 1"
+              v-if="hasNextPage"
+            >
+              Вперед
+            </button>
           </div>
-          <div>Фильтр: <input v-model="filter" @input="page = 1" class="h-9 border rounded-full mt-1 mb-1 ml-2" type="text"/></div>
+          <div>
+            Фильтр:
+            <input v-model="filter" @input="page = 1" class="h-9 border rounded-full mt-1 mb-1 ml-2" type="text"/>
+            <button 
+              class="h-9 my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 ml-2"
+              @click="filterReset()"
+              >
+              Сброс
+            </button>
+          </div>
         </div>
         <hr class="w-full border-t border-gray-600 my-4" />
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
@@ -200,6 +216,7 @@ export default {
 
   data() {
     return {
+      messageValidation: false,
       ticker: "",
       filter: "",
       tickers: [],
@@ -296,10 +313,36 @@ export default {
         price: "-",
       };
 
-      this.tickers = [...this.tickers, currentTicker];
-      this.filter = "";
+      let tickersArray = JSON.parse(JSON.stringify(this.tickers));
 
-      this.subscribeToUpdate(currentTicker.name);
+      if (this.ticker.length > 0) {
+        if (tickersArray.length !== 0) {
+          if (tickersArray.findIndex((x) => x.name === currentTicker.name) === -1) {
+            this.messageValidation = false;
+            this.tickers = [...this.tickers, currentTicker];
+            this.filter = "";
+
+            this.subscribeToUpdate(currentTicker.name);
+          } else {
+            this.messageValidation = true;
+          }
+        } else {
+          this.messageValidation = false;
+
+          console.log('ARRAY WAS EMPTY');
+          this.tickers = [...this.tickers, currentTicker];
+          this.filter = "";
+          this.subscribeToUpdate(currentTicker.name);
+        }
+      }
+    },
+
+    checkForAvailability() {
+      this.messageValidation = false;
+    },
+
+    filterReset() {
+      this.filter = "";
     },
 
     select(ticker) {
@@ -320,8 +363,7 @@ export default {
       this.graph = [];
     },
 
-    tickers(newValue, oldValue) {
-      console.log(newValue === oldValue);
+    tickers() {
       localStorage.setItem('cryptonomicon-list', JSON.stringify(this.tickers));
     },
 
